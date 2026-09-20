@@ -1,0 +1,242 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudyOS - CGPA Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; 
+      padding: 0; 
+      font-family: 'Poppins', sans-serif; 
+    }
+    body { background-image: url(blue\ cap.jpg);
+      background-repeat: none;
+      background-size: cover;
+      color: #111; 
+      padding: 16px; 
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      }
+   header {
+     margin-bottom: 20px; 
+    }
+  h1 {
+     font-size: 24px; 
+     color: #a2ef44;
+     }
+ .card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+.row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+input, select {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  flex: 1;
+  transition: 0.2s;
+}
+input.error {
+  border: 2px solid #210c9c;
+  animation: shake 0.3s;
+}
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
+button {
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: black;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s;
+}
+button:hover { transform: scale(1.03); }
+.danger { background: #a2ef44; }
+.course {
+  border-left: 5px solid #1e3a8a;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  position: relative;
+}
+.grade {
+  font-weight: bold;
+}
+.green { color: black; }
+.yellow { color: orange; }
+.red { color: red; }
+.cgpa-box {
+  text-align: center;
+  padding: 20px;
+}
+.cgpa {
+  font-size: 40px;
+  font-weight: bold;
+  color: #1e3a8a;
+}
+.small { font-size: 14px; color: gray; }
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111;
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 10px;
+  opacity: 0;
+  transition: 0.3s;
+  pointer-events: none;
+}
+.toast.show {
+  opacity: 1;
+  bottom: 30px;
+}
+@media(max-width:600px) {
+  h1 { font-size: 20px; }
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>CGPA Calculator</h1>
+    </header><div class="card">
+  <div class="row">
+    <input type="text" id="courseName" placeholder="Course name" />
+    <input type="number" id="courseUnit" placeholder="Units" />
+    <input type="number" id="courseScore" placeholder="Score (0-100)" />
+  </div>
+  <br>
+  <button onclick="addCourse()">+ Add Course</button>
+</div>
+<div id="courseList"></div>
+<div class="card cgpa-box">
+  <div class="cgpa" id="cgpa">0.00</div>
+  <div class="small">Current CGPA</div>
+</div>
+<div class="card">
+  <button onclick="saveData()"> Save</button>
+  <button class="danger" onclick="clearData()"> Clear</button>
+</div>
+</div> 
+<div id="toast" class="toast"></div>
+  
+  
+<script>
+let courses = JSON.parse(localStorage.getItem("courses")) || [];
+function showToast(message) {
+  const toast = document.getElementById("toast");
+  toast.innerText = message;
+  toast.classList.add("show");
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2000);
+}
+function getGrade(score) {
+  if (score >= 70) return { grade: 'A', point: 5, color: 'green' };
+  if (score >= 60) return { grade: 'B', point: 4, color: 'green' };
+  if (score >= 50) return { grade: 'C', point: 3, color: 'yellow' };
+  if (score >= 45) return { grade: 'D', point: 2, color: 'red' };
+  if (score >= 40) return { grade: 'E', point: 1, color: 'red' };
+  return { grade: 'F', point: 0, color: 'red' };
+}
+function addCourse() {
+  const nameEl = document.getElementById("courseName");
+  const unitEl = document.getElementById("courseUnit");
+  const scoreEl = document.getElementById("courseScore");
+  const name = nameEl.value.trim();
+  const unit = parseFloat(unitEl.value);
+  const score = parseFloat(scoreEl.value);
+  // inline validation
+  [nameEl, unitEl, scoreEl].forEach(el => el.classList.remove("error"));
+  if (!name) {
+    nameEl.classList.add("error");
+    showToast("Enter course name");
+    return;
+  }
+  if (isNaN(unit)) {
+    unitEl.classList.add("error");
+    showToast("Enter valid unit");
+    return;
+  }
+  if (isNaN(score)) {
+    scoreEl.classList.add("error");
+    showToast("Enter valid score");
+    return;
+  }
+  // duplicate prevention
+  const exists = courses.some(c => c.name.toLowerCase() === name.toLowerCase());
+  if (exists) {
+    nameEl.classList.add("error");
+    showToast("Course already exists");
+    return;
+  }
+  const gradeData = getGrade(score);
+  courses.push({ name, unit, score, ...gradeData });
+  // reset inputs
+  nameEl.value = "";
+  unitEl.value = "";
+  scoreEl.value = "";
+  showToast("Course added successfully");
+  render();
+}
+function render() {
+  const list = document.getElementById("courseList");
+  list.innerHTML = "";
+  let totalUnits = 0;
+  let totalPoints = 0;
+  courses.forEach((c, i) => {
+    totalUnits += c.unit;
+    totalPoints += c.unit * c.point;
+    list.innerHTML += `
+      <div class="course">
+        <strong>${c.name}</strong><br>
+        Units: ${c.unit} | Score: ${c.score}<br>
+        Grade: <span class="grade ${c.color}">${c.grade}</span>
+        <button onclick="deleteCourse(${i})" style="position:absolute; right:10px; top:10px;">❌</button>
+      </div>
+    `;
+  });
+  const cgpa = totalUnits ? (totalPoints / totalUnits).toFixed(2) : "0.00";
+  document.getElementById("cgpa").innerText = cgpa;
+}
+function deleteCourse(index) {
+  courses.splice(index, 1);
+  showToast("Course deleted");
+  render();
+}
+function saveData() {
+  localStorage.setItem("courses", JSON.stringify(courses));
+  showToast("Saved successfully");
+}
+function clearData() {
+  if (confirm("Clear all data?")) {
+    courses = [];
+    localStorage.removeItem("courses");
+    render();
+    showToast("All data cleared");
+  }
+}
+render();
+</script>
+</body>
+</html>
